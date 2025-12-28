@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
+
 # Copyright (c) 2021-2025 community-scripts ORG
-# Author: tteck (tteckster) | MickLesk | michelroegl-brunner
+# Author: tteck (tteckster) | MickLesk | michelroegl-brunner | bandogora
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/branch/main/LICENSE
 
 # ==============================================================================
@@ -164,18 +165,7 @@ maxkeys_check() {
 # - Returns "Unknown" if OS type cannot be determined
 # ------------------------------------------------------------------------------
 get_current_ip() {
-  if [ -f /etc/os-release ]; then
-    # Check for Debian/Ubuntu (uses hostname -I)
-    if grep -qE 'ID=debian|ID=ubuntu' /etc/os-release; then
-      CURRENT_IP=$(hostname -I | awk '{print $1}')
-    # Check for Alpine (uses ip command)
-    elif grep -q 'ID=alpine' /etc/os-release; then
-      CURRENT_IP=$(ip -4 addr show eth0 | awk '/inet / {print $2}' | cut -d/ -f1 | head -n 1)
-    else
-      CURRENT_IP="Unknown"
-    fi
-  fi
-  echo "$CURRENT_IP"
+  ip -4 addr show eth0 | awk '/inet / {print $2}' | cut -d/ -f1 | head -n 1
 }
 
 # ------------------------------------------------------------------------------
@@ -890,7 +880,7 @@ _build_vars_diff() {
 
 # Build a temporary <app>.vars file from current advanced settings
 _build_current_app_vars_tmp() {
-  tmpf="$(mktemp /tmp/${NSAPP:-app}.vars.new.XXXXXX)"
+  tmpf="$(mktemp /tmp/"${NSAPP:-app}".vars.new.XXXXXX)"
 
   # NET/GW
   _net="${NET:-}"
@@ -2757,11 +2747,14 @@ build_container() {
   # Build PCT_OPTIONS as string for export
   TEMP_DIR=$(mktemp -d)
   pushd "$TEMP_DIR" >/dev/null
-  if [ "$var_os" == "alpine" ]; then
-    export FUNCTIONS_FILE_PATH="$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/alpine-install.func)"
-  else
-    export FUNCTIONS_FILE_PATH="$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/install.func)"
-  fi
+  case "$var_os" in
+    ubuntu|debian|devuan) FUNCTIONS_FILE_PATH="$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/install.func)" ;;
+    centos|rocky|almalinux|fedora|openeuler) FUNCTIONS_FILE_PATH="$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/install.func)" ;;
+    alpine) FUNCTIONS_FILE_PATH="$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/alpine-install.func)" ;;
+    # gentoo) FUNCTIONS_FILE_PATH="$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/gentoo-install.func)" ;;
+    *) FUNCTIONS_FILE_PATH="$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/install.func)"
+  esac
+  export FUNCTIONS_FILE_PATH
 
   # Core exports for install.func
   export DIAGNOSTICS="$DIAGNOSTICS"
@@ -3172,39 +3165,75 @@ EOF
   # fi
 
   # Continue with standard container setup
-  if [ "$var_os" == "alpine" ]; then
-    sleep 3
-    pct exec "$CTID" -- /bin/sh -c 'cat <<EOF >/etc/apk/repositories
-http://dl-cdn.alpinelinux.org/alpine/latest-stable/main
-http://dl-cdn.alpinelinux.org/alpine/latest-stable/community
-EOF'
-    pct exec "$CTID" -- ash -c "apk add bash newt curl openssh nano mc ncurses jq >/dev/null"
-  else
-    sleep 3
-    pct exec "$CTID" -- bash -c "sed -i '/$LANG/ s/^# //' /etc/locale.gen"
-    pct exec "$CTID" -- bash -c "locale_line=\$(grep -v '^#' /etc/locale.gen | grep -E '^[a-zA-Z]' | awk '{print \$1}' | head -n 1) && \
-    echo LANG=\$locale_line >/etc/default/locale && \
-    locale-gen >/dev/null && \
-    export LANG=\$locale_line"
+  case "$var_os" in
+    ubuntu|debian|devuan)
+      sleep 3
+      pct exec "$CTID" -- bash -c "sed -i '/$LANG/ s/^# //' /etc/locale.gen"
+      pct exec "$CTID" -- bash -c "locale_line=\$(grep -v '^#' /etc/locale.gen | grep -E '^[a-zA-Z]' | awk '{print \$1}' | head -n 1) && \
+      echo LANG=\$locale_line >/etc/default/locale && \
+      locale-gen >/dev/null && \
+      export LANG=\$locale_line"
 
-    if [[ -z "${tz:-}" ]]; then
-      tz=$(timedatectl show --property=Timezone --value 2>/dev/null || echo "UTC")
-    fi
-    [[ "${tz:-}" == Etc/* ]] && tz="UTC" # Normalize Etc/* to UTC for container setup
+      if [[ -z "${tz:-}" ]]; then
+        tz=$(timedatectl show --property=Timezone --value 2>/dev/null || echo "UTC")
+      fi
+      [[ "${tz:-}" == Etc/* ]] && tz="UTC" # Normalize Etc/* to UTC for container setup
 
-    if pct exec "$CTID" -- test -e "/usr/share/zoneinfo/$tz"; then
-      # Set timezone using symlink (Debian 13+ compatible)
-      # Create /etc/timezone for backwards compatibility with older scripts
-      pct exec "$CTID" -- bash -c "tz='$tz'; ln -sf \"/usr/share/zoneinfo/\$tz\" /etc/localtime && echo \"\$tz\" >/etc/timezone || true"
-    else
-      msg_warn "Skipping timezone setup – zone '$tz' not found in container"
-    fi
+      if pct exec "$CTID" -- test -e "/usr/share/zoneinfo/$tz"; then
+        # Set timezone using symlink (Debian 13+ compatible)
+        # Create /etc/timezone for backwards compatibility with older scripts
+        pct exec "$CTID" -- bash -c "tz='$tz'; ln -sf \"/usr/share/zoneinfo/\$tz\" /etc/localtime && echo \"\$tz\" >/etc/timezone || true"
+      else
+        msg_warn "Skipping timezone setup – zone '$tz' not found in container"
+      fi
 
-    pct exec "$CTID" -- bash -c "apt-get update >/dev/null && apt-get install -y sudo curl mc gnupg2 jq >/dev/null" || {
-      msg_error "apt-get base packages installation failed"
-      exit 1
-    }
-  fi
+      pct exec "$CTID" -- bash -c "apt-get update >/dev/null && apt-get install -y sudo curl mc gnupg2 jq >/dev/null" || {
+        msg_error "apt-get base packages installation failed"
+        exit 1
+      }
+      ;;
+    centos|rocky|almalinux|fedora|openeuler)
+      sleep 3
+      # generate locale if missing
+      if ! pct exec "$CTID" -- locale -a | grep -qx "${LANG}"; then
+        # pick LANG (fallback if empty)
+        LANG="${LANG:-en_US.UTF-8}"
+        pct exec "$CTID" -- localedef -i "${LANG%%.*}" -f "${LANG#*.}" "$LANG"
+      fi
+
+      # set system locale for runtime
+      pct exec "$CTID" -- sh -c "printf 'LANG=%s\n' $LANG > /etc/locale.conf"
+
+      if [[ -z "${tz:-}" ]]; then
+        # try timedatectl; fall back to UTC
+        tz=$(timedatectl show --property=Timezone --value 2>/dev/null || echo "UTC")
+      fi
+      [[ "${tz:-}" == Etc/* ]] && tz="UTC" # Normalize Etc/* to UTC for container setup
+
+      if pct exec "$CTID" -- test -e "/usr/share/zoneinfo/$tz"; then
+        # Set timezone using symlink
+        # Create /etc/timezone for backwards compatibility with older scripts
+        pct exec "$CTID" -- sh -c "tz='$tz'; ln -sf \"/usr/share/zoneinfo/\$tz\" /etc/localtime && echo \"\$tz\" >/etc/timezone || true"
+      else
+        msg_warn "Skipping timezone setup – zone '$tz' not found in container"
+      fi
+
+      # install base packages
+      pct exec "$CTID" -- sh -c "dnf upgrade -y >/dev/null && dnf install -y sudo curl mc ncurses gnupg2 gnupg jq >/dev/null" || {
+        msg_error "dnf base packages installation failed"
+        exit 1
+      }
+      ;;
+    alpine)
+      sleep 3
+      pct exec "$CTID" -- /bin/sh -c 'cat <<EOF >/etc/apk/repositories
+      http://dl-cdn.alpinelinux.org/alpine/latest-stable/main
+      http://dl-cdn.alpinelinux.org/alpine/latest-stable/community
+      EOF'
+      pct exec "$CTID" -- ash -c "apk add bash newt curl openssh nano mc ncurses jq >/dev/null"
+      ;;
+    # gentoo) ;;
+  esac
 
   msg_ok "Customized LXC Container"
 
@@ -3216,7 +3245,7 @@ EOF'
   set +Eeuo pipefail # Disable ALL error handling temporarily
   trap - ERR         # Remove ERR trap completely
 
-  lxc-attach -n "$CTID" -- bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/install/${var_install}.sh)"
+  lxc-attach -n "$CTID" -- bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/install/"${var_install}".sh)"
   local lxc_exit=$?
 
   set -Eeuo pipefail       # Re-enable error handling
@@ -3279,7 +3308,7 @@ EOF'
       else
         msg_dev "Container ${CTID} kept for debugging"
       fi
-      exit $install_exit_code
+      exit "$install_exit_code"
     fi
 
     # Prompt user for cleanup with 60s timeout (plain echo - no msg_info to avoid spinner)
@@ -3317,7 +3346,7 @@ EOF'
       echo -e "${BFR}${CM}${GN}Container ${CTID} removed${CL}"
     fi
 
-    exit $install_exit_code
+    exit "$install_exit_code"
   fi
 }
 
@@ -3600,7 +3629,7 @@ create_lxc_container() {
         msg_ok "LXC stack upgraded."
         if [[ "$do_retry" == "yes" ]]; then
           msg_info "Retrying container creation after upgrade"
-          if pct create "$CTID" "${TEMPLATE_STORAGE}:vztmpl/${TEMPLATE}" $PCT_OPTIONS >>"$LOGFILE" 2>&1; then
+          if pct create "$CTID" "${TEMPLATE_STORAGE}:vztmpl/${TEMPLATE}" "$PCT_OPTIONS" >>"$LOGFILE" 2>&1; then
             msg_ok "Container created successfully after upgrade."
             return 0
           else
@@ -3736,8 +3765,9 @@ create_lxc_container() {
   # ------------------------------------------------------------------------------
   TEMPLATE_SEARCH="${PCT_OSTYPE}-${PCT_OSVERSION:-}"
   case "$PCT_OSTYPE" in
-  debian | ubuntu) TEMPLATE_PATTERN="-standard_" ;;
-  alpine | fedora | rocky | centos) TEMPLATE_PATTERN="-default_" ;;
+  debian | ubuntu | devuan) TEMPLATE_PATTERN="-standard_" ;;
+  alpine | almalinux | fedora | rocky | centos | rockylinux | openeuler) TEMPLATE_PATTERN="-default_" ;;
+  gentoo) TEMPLATE_PATTERN="-openrc_" ;;
   *) TEMPLATE_PATTERN="" ;;
   esac
 
@@ -3833,7 +3863,7 @@ create_lxc_container() {
     fi
   fi
 
-  TEMPLATE_PATH="$(pvesm path $TEMPLATE_STORAGE:vztmpl/$TEMPLATE 2>/dev/null || true)"
+  TEMPLATE_PATH="$(pvesm path "$TEMPLATE_STORAGE":vztmpl/"$TEMPLATE" 2>/dev/null || true)"
   if [[ -z "$TEMPLATE_PATH" ]]; then
     TEMPLATE_BASE=$(awk -v s="$TEMPLATE_STORAGE" '$1==s {f=1} f && /path/ {print $2; exit}' /etc/pve/storage.cfg)
     [[ -n "$TEMPLATE_BASE" ]] && TEMPLATE_PATH="$TEMPLATE_BASE/template/cache/$TEMPLATE"
@@ -3898,7 +3928,7 @@ create_lxc_container() {
             TEMPLATE_SOURCE="online"
           fi
 
-          TEMPLATE_PATH="$(pvesm path $TEMPLATE_STORAGE:vztmpl/$TEMPLATE 2>/dev/null || true)"
+          TEMPLATE_PATH="$(pvesm path "$TEMPLATE_STORAGE":vztmpl/"$TEMPLATE" 2>/dev/null || true)"
           if [[ -z "$TEMPLATE_PATH" ]]; then
             TEMPLATE_BASE=$(awk -v s="$TEMPLATE_STORAGE" '$1==s {f=1} f && /path/ {print $2; exit}' /etc/pve/storage.cfg)
             [[ -n "$TEMPLATE_BASE" ]] && TEMPLATE_PATH="$TEMPLATE_BASE/template/cache/$TEMPLATE"
@@ -4035,7 +4065,7 @@ create_lxc_container() {
   msg_debug "Logfile: $LOGFILE"
 
   # First attempt (PCT_OPTIONS is a multi-line string, use it directly)
-  if ! pct create "$CTID" "${TEMPLATE_STORAGE}:vztmpl/${TEMPLATE}" $PCT_OPTIONS >"$LOGFILE" 2>&1; then
+  if ! pct create "$CTID" "${TEMPLATE_STORAGE}:vztmpl/${TEMPLATE}" "$PCT_OPTIONS" >"$LOGFILE" 2>&1; then
     msg_debug "Container creation failed on ${TEMPLATE_STORAGE}. Validating template..."
 
     # Validate template file
@@ -4054,7 +4084,7 @@ create_lxc_container() {
     fi
 
     # Retry after repair
-    if ! pct create "$CTID" "${TEMPLATE_STORAGE}:vztmpl/${TEMPLATE}" $PCT_OPTIONS >>"$LOGFILE" 2>&1; then
+    if ! pct create "$CTID" "${TEMPLATE_STORAGE}:vztmpl/${TEMPLATE}" "$PCT_OPTIONS" >>"$LOGFILE" 2>&1; then
       # Fallback to local storage if not already on local
       if [[ "$TEMPLATE_STORAGE" != "local" ]]; then
         msg_info "Retrying container creation with fallback to local storage..."
@@ -4063,7 +4093,7 @@ create_lxc_container() {
           msg_info "Downloading template to local..."
           pveam download local "$TEMPLATE" >/dev/null 2>&1
         fi
-        if ! pct create "$CTID" "local:vztmpl/${TEMPLATE}" $PCT_OPTIONS >>"$LOGFILE" 2>&1; then
+        if ! pct create "$CTID" "local:vztmpl/${TEMPLATE}" "$PCT_OPTIONS" >>"$LOGFILE" 2>&1; then
           # Local fallback also failed - check for LXC stack version issue
           if grep -qiE 'unsupported .* version' "$LOGFILE"; then
             echo
@@ -4087,7 +4117,7 @@ create_lxc_container() {
             msg_error "Container creation failed. See $LOGFILE"
             if whiptail --yesno "pct create failed.\nDo you want to enable verbose debug mode and view detailed logs?" 12 70; then
               set -x
-              pct create "$CTID" "local:vztmpl/${TEMPLATE}" $PCT_OPTIONS 2>&1 | tee -a "$LOGFILE"
+              pct create "$CTID" "local:vztmpl/${TEMPLATE}" "$PCT_OPTIONS" 2>&1 | tee -a "$LOGFILE"
               set +x
             fi
             exit 209
@@ -4119,7 +4149,7 @@ create_lxc_container() {
           msg_error "Container creation failed. See $LOGFILE"
           if whiptail --yesno "pct create failed.\nDo you want to enable verbose debug mode and view detailed logs?" 12 70; then
             set -x
-            pct create "$CTID" "local:vztmpl/${TEMPLATE}" $PCT_OPTIONS 2>&1 | tee -a "$LOGFILE"
+            pct create "$CTID" "local:vztmpl/${TEMPLATE}" "$PCT_OPTIONS" 2>&1 | tee -a "$LOGFILE"
             set +x
           fi
           exit 209

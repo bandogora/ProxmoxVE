@@ -55,7 +55,7 @@ jobs:
                 FIRST_LINE=$(sed -n '1p' "$FILE")
                 [[ "$FIRST_LINE" != "#!/usr/bin/env bash" ]] && echo "Line 1 was $FIRST_LINE | Should be: #!/usr/bin/env bash" >> "$LOG_FILE"
                 SECOND_LINE=$(sed -n '2p' "$FILE")
-                [[ "$SECOND_LINE" != "source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)" ]] && 
+                [[ "$SECOND_LINE" != "source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)" ]] &&
                 echo "Line 2 was $SECOND_LINE | Should be: source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)" >> "$LOG_FILE"
                 THIRD_LINE=$(sed -n '3p' "$FILE")
                  if ! [[ "$THIRD_LINE" =~ ^#\ Copyright\ \(c\)\ [0-9]{4}-[0-9]{4}\ community-scripts\ ORG$ || "$THIRD_LINE" =~ ^Copyright\ \(c\)\ [0-9]{4}-[0-9]{4}\ tteck$ ]]; then
@@ -71,29 +71,29 @@ jobs:
                   LINE=$(sed -n "${i}p" "$FILE")
 
                   case $i in
-                      4) 
+                      4)
                           [[ $LINE == $EXPECTED_AUTHOR* ]] || printf "Line %d was: '%s' | Should start with: '%s'\n" "$i" "$LINE" "$EXPECTED_AUTHOR" >> $LOG_FILE
                           ;;
-                      5) 
+                      5)
                           [[ "$LINE" == "$EXPECTED_LICENSE" ]] || printf "Line %d was: '%s' | Should be: '%s'\n" "$i" "$LINE" "$EXPECTED_LICENSE" >> $LOG_FILE
                           ;;
-                      6) 
+                      6)
                           [[ $LINE == $EXPECTED_SOURCE* ]] || printf "Line %d was: '%s' | Should start with: '%s'\n" "$i" "$LINE" "$EXPECTED_SOURCE" >> $LOG_FILE
                           ;;
-                      7) 
+                      7)
                           [[ -z $LINE ]] || printf "Line %d was: '%s' | Should be empty\n" "$i" "$LINE" >> $LOG_FILE
                           ;;
                   esac
               done
-                  
-              
+
+
               EXPECTED_PREFIXES=(
                   "APP="
                   "var_tags="
                   "var_cpu="   # Must be a number
                   "var_ram="   # Must be a number
                   "var_disk="  # Must be a number
-                  "var_os="    # Must be debian, alpine, or ubuntu
+                  "var_os="    # Must be debian, alpine, alma, or ubuntu
                   "var_version="
                   "var_unprivileged="  # Must be 0 or 1
               )
@@ -111,11 +111,11 @@ jobs:
                               echo "Line $i was '$LINE' | Should be: '${EXPECTED_PREFIXES[$INDEX]}<NUMBER>'" >> "$LOG_FILE"
                           fi
                           ;;
-                      5)  # var_os (must be debian, alpine, or ubuntu)
-                          if [[ "$LINE" =~ ^var_os=(debian|alpine|ubuntu)$ ]]; then
+                      5)  # var_os (must be debian, alpine, alma, or ubuntu)
+                          if [[ "$LINE" =~ ^var_os=(debian|alpine|ubuntu|alma)$ ]]; then
                               continue  # Valid
                           else
-                              echo "Line $i was '$LINE' | Should be: 'var_os=[debian|alpine|ubuntu]'" >> "$LOG_FILE"
+                              echo "Line $i was '$LINE' | Should be: 'var_os=[debian|alpine|ubuntu|alma]'" >> "$LOG_FILE"
                           fi
                           ;;
                       7)  # var_unprivileged (must be 0 or 1)
@@ -169,16 +169,16 @@ jobs:
                   LINE=$(sed -n "${i}p" "$FILE")
 
                   case $i in
-                      4) 
+                      4)
                           [[ $LINE == $EXPECTED_AUTHOR* ]] || printf "Line %d was: '%s' | Should start with: '%s'\n" "$i" "$LINE" "$EXPECTED_AUTHOR" >> $LOG_FILE
                           ;;
-                      5) 
+                      5)
                           [[ "$LINE" == "$EXPECTED_LICENSE" ]] || printf "Line %d was: '%s' | Should be: '%s'\n" "$i" "$LINE" "$EXPECTED_LICENSE" >> $LOG_FILE
                           ;;
-                      6) 
+                      6)
                           [[ $LINE == $EXPECTED_SOURCE* ]] || printf "Line %d was: '%s' | Should start with: '%s'\n" "$i" "$LINE" "$EXPECTED_SOURCE" >> $LOG_FILE
                           ;;
-                      7) 
+                      7)
                           [[ -z $LINE ]] || printf "Line %d was: '%s' | Should be empty\n" "$i" "$LINE" >> $LOG_FILE
                           ;;
                   esac
@@ -208,7 +208,7 @@ jobs:
             [[ "$LAST_3_LINES" != *'msg_ok "Cleaned"'* ]] && echo 'Last line should be: msg_ok "Cleaned"' >> "$LOG_FILE"
           cat "$LOG_FILE"
           fi
-            
+
           done
 
       - name: Post error comments
@@ -230,7 +230,7 @@ jobs:
                 --repo ${{ github.repository }} \
                 --body ":warning: The script _**$FILE**_ has the following formatting errors: <br> <div><strong>${ERROR_MSG}</strong></div>"
 
-              
+
               ERROR="true"
             fi
           done

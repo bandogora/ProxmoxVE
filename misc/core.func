@@ -729,16 +729,16 @@ header_info() {
 # - Installs ncurses-bin on Debian/Ubuntu or ncurses on Alpine
 # - Required for clear_line() and terminal width detection
 # ------------------------------------------------------------------------------
-ensure_tput() {
-  if ! command -v tput >/dev/null 2>&1; then
-    if grep -qi 'alpine' /etc/os-release; then
-      apk add --no-cache ncurses >/dev/null 2>&1
-    elif command -v apt-get >/dev/null 2>&1; then
-      apt-get update -qq >/dev/null
-      apt-get install -y -qq ncurses-bin >/dev/null 2>&1
-    fi
-  fi
-}
+# ensure_tput() {
+#   if ! command -v tput >/dev/null 2>&1; then
+#     if grep -qi 'alpine' /etc/os-release; then
+#       apk add --no-cache ncurses >/dev/null 2>&1
+#     elif command -v apt-get >/dev/null 2>&1; then
+#       apt-get update -qq >/dev/null
+#       apt-get install -y -qq ncurses-bin >/dev/null 2>&1
+#     fi
+#   fi
+# }
 
 # ------------------------------------------------------------------------------
 # is_alpine()
@@ -796,14 +796,23 @@ is_verbose_mode() {
 cleanup_lxc() {
   msg_info "Cleaning up"
 
-  if is_alpine; then
-    $STD apk cache clean || true
-    rm -rf /var/cache/apk/*
-  else
-    $STD apt -y autoremove || true
-    $STD apt -y autoclean || true
-    $STD apt -y clean || true
-  fi
+  case "$var_os" in
+    ubuntu|debian|devuan)
+      $STD apt -y autoremove || true
+      $STD apt -y autoclean || true
+      $STD apt -y clean || true
+      ;;
+    centos|rocky|almalinux|fedora|openeuler)
+      $STD dnf -y autoremove || true
+      $STD dnf -y clean all || true
+      rm -rf ~/.cache /var/cache/yum /var/cache/dnf
+      ;;
+    alpine)
+      $STD apk cache clean || true
+      rm -rf /var/cache/apk/*
+      ;;
+    # gentoo) ;;
+  esac
 
   # Clear temp artifacts (keep sockets/FIFOs; ignore errors)
   find /tmp /var/tmp -type f -name 'tmp*' -delete 2>/dev/null || true

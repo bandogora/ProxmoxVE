@@ -181,37 +181,11 @@ network_check() {
 # ------------------------------------------------------------------------------
 update_os() {
   msg_info "Updating Container OS"
-  case "$var_os" in
-    ubuntu|debian|devuan)
-      if [[ "$CACHER" == "yes" ]]; then
-        echo 'Acquire::http::Proxy-Auto-Detect "/usr/local/bin/apt-proxy-detect.sh";' >/etc/apt/apt.conf.d/00aptproxy
-        cat <<EOF >/usr/local/bin/apt-proxy-detect.sh
-#!/bin/bash
-if nc -w1 -z "${CACHER_IP}" 3142; then
-  echo -n "http://${CACHER_IP}:3142"
-else
-  echo -n "DIRECT"
-fi
-EOF
-        chmod +x /usr/local/bin/apt-proxy-detect.sh
-      fi
-      $STD apt-get update
-      $STD apt-get -o Dpkg::Options::="--force-confold" -y dist-upgrade
-      rm -rf /usr/lib/python3.*/EXTERNALLY-MANAGED
-      ;;
-    centos|rocky|almalinux|fedora|openeuler)
-      $STD dnf upgrade -y
-      ;;
-    alpine)
-      $STD apk -U upgrade
-      ;;
-    # gentoo) ;;
-  esac
-  msg_ok "Updated Container OS"
-
+  $STD dnf upgrade -yq
   # shellcheck source=misc/tools.func
   source <(curl -fsSL https://raw.githubusercontent.com/bandogora/ProxmoxVE/main/misc/tools.func)
   # source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/tools.func)
+  msg_ok "Updated Container OS"
 }
 
 # ==============================================================================
@@ -239,7 +213,8 @@ motd_ssh() {
   PROFILE_FILE="/etc/profile.d/00_lxc-details.sh"
   echo "echo -e \"\"" >"$PROFILE_FILE"
   echo -e "echo -e \"${BOLD}${APPLICATION} LXC Container${CL}"\" >>"$PROFILE_FILE"
-  echo -e "echo -e \"${TAB}${GATEWAY}${YW} Provided by: ${GN}community-scripts ORG ${YW}| GitHub: ${GN}https://github.com/community-scripts/ProxmoxVE${CL}\"" >>"$PROFILE_FILE"
+  # echo -e "echo -e \"${TAB}${GATEWAY}${YW} Provided by: ${GN}community-scripts ORG ${YW}| GitHub: ${GN}https://github.com/community-scripts/ProxmoxVE${CL}\"" >>"$PROFILE_FILE"
+  echo -e "echo -e \"${TAB}${GATEWAY}${YW} Provided by: ${GN}community-scripts ORG ${YW}| GitHub: ${GN}https://github.com/bandogora/ProxmoxVE${CL}\"" >>"$PROFILE_FILE"
   echo "echo \"\"" >>"$PROFILE_FILE"
   echo -e "echo -e \"${TAB}${OS}${YW} OS: ${GN}\$(grep ^NAME /etc/os-release | cut -d= -f2 | tr -d '\"') - Version: \$(grep ^VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '\"')${CL}\"" >>"$PROFILE_FILE"
   echo -e "echo -e \"${TAB}${HOSTNAME}${YW} Hostname: ${GN}\$(hostname)${CL}\"" >>"$PROFILE_FILE"
@@ -271,18 +246,19 @@ customize() {
   if [[ "$PASSWORD" == "" ]]; then
     msg_info "Customizing Container"
     GETTY_OVERRIDE="/etc/systemd/system/container-getty@1.service.d/override.conf"
-    mkdir -p $(dirname $GETTY_OVERRIDE)
+    mkdir -p "$(dirname $GETTY_OVERRIDE)"
     cat <<EOF >$GETTY_OVERRIDE
   [Service]
   ExecStart=
   ExecStart=-/sbin/agetty --autologin root --noclear --keep-baud tty%I 115200,38400,9600 \$TERM
 EOF
     systemctl daemon-reload
-    systemctl restart $(basename $(dirname $GETTY_OVERRIDE) | sed 's/\.d//')
+    systemctl restart "$(basename "$(dirname $GETTY_OVERRIDE)" | sed 's/\.d//')"
     msg_ok "Customized Container"
   fi
-  echo "bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/${app}.sh)\"" >/usr/bin/update
-  chmod +x /usr/bin/update
+  # echo "bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/${app}.sh)\"" >/usr/bin/update
+  echo "bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/bandogora/ProxmoxVE/main/ct/${app}.sh)\"" >/usr/bin/update
+  chmod +x /usr/bin/upda"te"
 
   if [[ -n "${SSH_AUTHORIZED_KEY}" ]]; then
     mkdir -p /root/.ssh
