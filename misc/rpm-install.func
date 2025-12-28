@@ -30,11 +30,11 @@
 # ==============================================================================
 
 # shellcheck source=misc/core.func
-source <(curl -fsSL https://raw.githubusercontent.com/bandogora/ProxmoxVE/main/misc/core.func)
-# source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/core.func)
+source <(curl -fsSL https://raw.githubusercontent.com/bandogora/ProxmoxVE/feature/yugabytedb/misc/core.func)
+# source <(curl -fsSL https://raw.githubusercontent.com/bandogora/ProxmoxVE/feature/yugabytedb/misc/core.func)
 # shellcheck source=misc/error_handler.func
-source <(curl -fsSL https://raw.githubusercontent.com/bandogora/ProxmoxVE/main/misc/error_handler.func)
-# source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/error_handler.func)
+source <(curl -fsSL https://raw.githubusercontent.com/bandogora/ProxmoxVE/feature/yugabytedb/misc/error_handler.func)
+# source <(curl -fsSL https://raw.githubusercontent.com/bandogora/ProxmoxVE/feature/yugabytedb/misc/error_handler.func)
 load_functions
 catch_errors
 
@@ -183,8 +183,8 @@ update_os() {
   msg_info "Updating Container OS"
   $STD dnf upgrade -yq
   # shellcheck source=misc/tools.func
-  source <(curl -fsSL https://raw.githubusercontent.com/bandogora/ProxmoxVE/main/misc/tools.func)
-  # source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/tools.func)
+  source <(curl -fsSL https://raw.githubusercontent.com/bandogora/ProxmoxVE/feature/yugabytedb/misc/tools.func)
+  # source <(curl -fsSL https://raw.githubusercontent.com/bandogora/ProxmoxVE/feature/yugabytedb/misc/tools.func)
   msg_ok "Updated Container OS"
 }
 

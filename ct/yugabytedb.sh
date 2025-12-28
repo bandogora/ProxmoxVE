@@ -6,7 +6,7 @@
 # Source: https://www.yugabyte.com/yugabytedb/
 
 # shellcheck source=misc/build.func
-source <(curl -fsSL https://raw.githubusercontent.com/bandogora/ProxmoxVE/main/misc/build.func)
+source <(curl -fsSL https://raw.githubusercontent.com/bandogora/ProxmoxVE/feature/yugabytedb/misc/build.func)
 # source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
 
 # App Default Values

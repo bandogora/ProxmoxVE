@@ -81,11 +81,11 @@ variables() {
   fi
 }
 
-source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/api.func)
+source <(curl -fsSL https://raw.githubusercontent.com/bandogora/ProxmoxVE/feature/yugabytedb/misc/api.func)
 
 if command -v curl >/dev/null 2>&1; then
-  source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/core.func)
-  source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/error_handler.func)
+  source <(curl -fsSL https://raw.githubusercontent.com/bandogora/ProxmoxVE/feature/yugabytedb/misc/core.func)
+  source <(curl -fsSL https://raw.githubusercontent.com/bandogora/ProxmoxVE/feature/yugabytedb/misc/error_handler.func)
   load_functions
   catch_errors
 elif command -v wget >/dev/null 2>&1; then
@@ -2620,7 +2620,7 @@ configure_ssh_settings() {
 # - Otherwise: shows update/setting menu and runs update_script with cleanup
 # ------------------------------------------------------------------------------
 start() {
-  source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/tools.func)
+  source <(curl -fsSL https://raw.githubusercontent.com/bandogora/ProxmoxVE/feature/yugabytedb/misc/tools.func)
   if command -v pveversion >/dev/null 2>&1; then
     install_script || return 0
     return 0
@@ -3329,7 +3329,7 @@ EOF
         if [[ "${DEV_MODE_MOTD:-false}" == "true" ]]; then
           echo -e "${TAB}${HOLD}${DGN}Setting up MOTD and SSH for debugging...${CL}"
           if pct exec "$CTID" -- bash -c "
-            source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/install.func)
+            source <(curl -fsSL https://raw.githubusercontent.com/bandogora/ProxmoxVE/feature/yugabytedb/misc/install.func)
             declare -f motd_ssh >/dev/null 2>&1 && motd_ssh || true
           " >/dev/null 2>&1; then
             local ct_ip=$(pct exec "$CTID" ip a s dev eth0 2>/dev/null | awk '/inet / {print $2}' | cut -d/ -f1)
