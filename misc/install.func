@@ -262,7 +262,7 @@ motd_ssh() {
     case "$PCT_OSTYPE" in
     ubuntu | debian | devuan)
       sed -i "s/#PermitRootLogin prohibit-password/PermitRootLogin yes/g" /etc/ssh/sshd_config
-      systemctl restart sshd
+      service ssh restart
       ;;
     centos | rockylinux | almalinux | fedora | openeuler)
       $STD dnf install -y openssh-server
@@ -274,7 +274,7 @@ motd_ssh() {
       sed -i "s/#PermitRootLogin prohibit-password/PermitRootLogin yes/g" /etc/ssh/sshd_config
       $STD /etc/init.d/sshd start
       ;;
-    # gentoo) ;;
+      # gentoo) ;;
     esac
   fi
 }
