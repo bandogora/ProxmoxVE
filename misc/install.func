@@ -182,6 +182,7 @@ network_check() {
 # - Uses $STD wrapper to suppress output unless VERBOSE=yes
 # ------------------------------------------------------------------------------
 update_os() {
+  # Set STD mode based on VERBOSE
   set_std_mode
   msg_info "Updating Container OS"
   msg_debug "PCT_OSTYPE: $PCT_OSTYPE"
@@ -237,6 +238,8 @@ EOF
 # - Configures TERM environment variable for better terminal support
 # ------------------------------------------------------------------------------
 motd_ssh() {
+  # Set STD mode based on VERBOSE
+  set_std_mode
   # Set terminal to 256-color mode
   grep -qxF "export TERM='xterm-256color'" /root/.bashrc || echo "export TERM='xterm-256color'" >>/root/.bashrc
 
@@ -272,10 +275,6 @@ motd_ssh() {
       $STD /etc/init.d/sshd start
       ;;
     # gentoo) ;;
-    *)
-      sed -i "s/#PermitRootLogin prohibit-password/PermitRootLogin yes/g" /etc/ssh/sshd_config
-      systemctl restart sshd
-      ;;
     esac
   fi
 }
