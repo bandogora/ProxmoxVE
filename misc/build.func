@@ -3177,6 +3177,10 @@ EOF
   case "$var_os" in
   ubuntu | debian | devuan)
     sleep 3
+    pct exec "$CTID" -- bash -c "apt-get update >/dev/null && apt-get install -y sudo curl mc gnupg2 jq locales >/dev/null" || {
+      msg_error "apt-get base packages installation failed"
+      exit 1
+    }
     pct exec "$CTID" -- bash -c "sed -i '/$LANG/ s/^# //' /etc/locale.gen"
     pct exec "$CTID" -- bash -c "locale_line=\$(grep -v '^#' /etc/locale.gen | grep -E '^[a-zA-Z]' | awk '{print \$1}' | head -n 1) && \
       echo LANG=\$locale_line >/etc/default/locale && \
@@ -3195,11 +3199,6 @@ EOF
     else
       msg_warn "Skipping timezone setup – zone '$tz' not found in container"
     fi
-
-    pct exec "$CTID" -- bash -c "apt-get update >/dev/null && apt-get install -y sudo curl mc gnupg2 jq >/dev/null" || {
-      msg_error "apt-get base packages installation failed"
-      exit 1
-    }
     ;;
   centos | rockylinux | almalinux | fedora | openeuler)
     sleep 3
